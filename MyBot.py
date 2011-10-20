@@ -1,17 +1,11 @@
 #!/usr/bin/env python
 from ants import *
 
-# define a class with a do_turn method
-# the Ants.run method will parse and update bot input
-# it will also run the do_turn method for us
 class MyBot:
   def __init__(self):
     # define class level variables, will be remembered between turns
     pass
 
-  # do_setup is run once at the start of the game
-  # after the bot has received the game settings
-  # the ants class is created and setup by the Ants.run method
   def do_setup(self, ants):
     self.hills = []
     self.unseen = []
@@ -19,37 +13,26 @@ class MyBot:
       for col in range(ants.cols):
         self.unseen.append((row, col))
 
+  def do_move_direction(self, loc, direction, ants):
+    new_loc = ants.destination(loc, direction)
+    if (ants.unoccupied(new_loc) and new_loc not in self.orders):
+      ants.issue_order((loc, direction))
+      self.orders[new_loc] = loc
+      return True
+    else:
+      return False
 
-  # do turn is run once per turn
-  # the ants class has the game state and is updated by the Ants.run method
-  # it also has several helper methods to use
-  def do_turn(self, ants):
-    # track all moves, prevent collisions
-    orders = {}
-    def do_move_direction(loc, direction):
-      new_loc = ants.destination(loc, direction)
-      if (ants.unoccupied(new_loc) and new_loc not in orders):
-        ants.issue_order((loc, direction))
-        orders[new_loc] = loc
+  def do_move_location(self, loc, dest, ants):
+    directions = ants.direction(loc, dest)
+    for direction in directions:
+      if self.do_move_direction(loc, direction, ants):
+        self.targets[dest] = loc
         return True
-      else:
-        return False
+        break
+    else:
+      return False
 
-    targets = {}
-    def do_move_location(loc, dest):
-      directions = ants.direction(loc, dest)
-      for direction in directions:
-        if do_move_direction(loc, direction):
-          targets[dest] = loc
-          return True
-          break
-      else:
-        return False
-
-    for hill_loc in ants.my_hills():
-      orders[hill_loc] = None
-
-    # find close food
+  def find_food(self, ants):
     ant_dist = []
     for food_loc in ants.food():
       for ant_loc in ants.my_ants():
@@ -57,44 +40,55 @@ class MyBot:
         ant_dist.append((dist, ant_loc, food_loc))
     ant_dist.sort()
     for dist, ant_loc, food_loc in ant_dist:
-      if food_loc not in targets and ant_loc not in targets.values():
-        do_move_location(ant_loc, food_loc)
+      if food_loc not in self.targets and ant_loc not in self.targets.values():
+        self.do_move_location(ant_loc, food_loc, ants)
 
-    # kill hills
+  def find_hills(self, ants):
     for hill_loc, hill_owner in ants.enemy_hills():
       if hill_loc not in self.hills:
         self.hills.append(hill_loc)
     ant_dist = []
     for hill_loc in self.hills:
       for ant_loc in ants.my_ants():
-        if ant_loc not in orders.values():
+        if ant_loc not in self.orders.values():
           dist = ants.distance(ant_loc, hill_loc)
           ant_dist.append((dist, ant_loc))
     ant_dist.sort()
     for dist, ant_loc in ant_dist:
-      do_move_location(ant_loc, hill_loc)
+      self.do_move_location(ant_loc, hill_loc, ants)
 
-    # explore map
+  def find_new_territory(self, ants):
     for loc in self.unseen[:]:
       if ants.visible(loc):
         self.unseen.remove(loc)
     for ant_loc in ants.my_ants():
-      if ant_loc not in orders.values():
+      if ant_loc not in self.orders.values():
         unseen_dist = []
         for unseen_loc in self.unseen:
           dist = ants.distance(ant_loc, unseen_loc)
           unseen_dist.append((dist, unseen_loc))
         unseen_dist.sort()
         for dist, unseen_loc in unseen_dist:
-          if do_move_location(ant_loc, unseen_loc):
+          if self.do_move_location(ant_loc, unseen_loc, ants):
             break
 
-    # unblock our hills
+  def unblock_hills(self, ants):
     for hill_loc in ants.my_hills():
-      if hill_loc in ants.my_ants() and hill_loc not in orders.values():
+      if hill_loc in ants.my_ants() and hill_loc not in self.orders.values():
         for direction in ('n','e','s','w'):
-          if do_move_direction(hill_loc, direction):
+          if self.do_move_direction(hill_loc, direction, ants):
             break
+
+  def do_turn(self, ants):
+    self.orders = {}
+    self.targets = {}
+    for hill_loc in ants.my_hills():
+      self.orders[hill_loc] = None
+
+    self.find_food(ants)
+    self.find_hills(ants)
+    self.find_new_territory(ants)
+    self.unblock_hills(ants)
 
 if __name__ == '__main__':
   # psyco will speed up python a little, but is not needed
