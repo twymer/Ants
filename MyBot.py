@@ -31,12 +31,36 @@ class MyBot:
       else:
         return False
 
-    # default move
-    for ant_loc in ants.my_ants():
-      directions = ('n','e','s','w')
+    targets = {}
+    def do_move_location(loc, dest):
+      directions = ants.direction(loc, dest)
       for direction in directions:
-        if do_move_direction(ant_loc, direction):
-          break
+        if do_move_direction(loc, direction):
+          targets[dest] = loc
+          return True
+        else:
+          return False
+
+    for hill_loc in ants.my_hills():
+      orders[hill_loc] = None
+
+    # find close food
+    ant_dist = []
+    for food_loc in ants.food():
+      for ant_loc in ants.my_ants():
+        dist = ants.distance(ant_loc, food_loc)
+        ant_dist.append((dist, ant_loc, food_loc))
+    ant_dist.sort()
+    for dist, ant_loc, food_loc in ant_dist:
+      if food_loc not in targets and ant_loc not in targets.values():
+        do_move_location(ant_loc, food_loc)
+
+    # unblock our hills
+    for hill_loc in ants.my_hills():
+      if hill_loc in ants.my_ants() and hill_loc not in orders.values():
+        for direction in ('s','e','w','n'):
+          if do_move_direction(hill_loc, direction):
+            break
 
 if __name__ == '__main__':
   # psyco will speed up python a little, but is not needed
