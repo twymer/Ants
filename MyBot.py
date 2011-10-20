@@ -14,7 +14,11 @@ class MyBot:
   # the ants class is created and setup by the Ants.run method
   def do_setup(self, ants):
     # initialize data structures after learning the game settings
-    pass
+    self.unseen = []
+    for row in range(ants.rows):
+      for col in range(ants.cols):
+        self.unseen.append((row, col))
+
 
   # do turn is run once per turn
   # the ants class has the game state and is updated by the Ants.run method
@@ -60,6 +64,21 @@ class MyBot:
       if hill_loc in ants.my_ants() and hill_loc not in orders.values():
         for direction in ('s','e','w','n'):
           if do_move_direction(hill_loc, direction):
+            break
+
+    # explore map
+    for loc in self.unseen[:]:
+      if ants.visible(loc):
+        self.unseen.remove(loc)
+    for ant_loc in ants.my_ants():
+      if ant_loc not in orders.values():
+        unseen_dist = []
+        for unseen_loc in self.unseen:
+          dist = ants.distance(ant_loc, unseen_loc)
+          unseen_dist.append((dist, unseen_loc))
+        unseen_dist.sort()
+        for dist, unseen_loc in unseen_dist:
+          if do_move_location(ant_loc, unseen_loc):
             break
 
 if __name__ == '__main__':
