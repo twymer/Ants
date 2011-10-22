@@ -3,11 +3,18 @@ from random import shuffle
 from ants import *
 import logging
 
+from time import time
+
 class MyBot:
   # define class level variables, will be remembered between turns
   def __init__(self):
-    logging.error('Watch out!')
     self.checked_paths = set()
+    self.direction_time = 0
+    self.destination_time = 0
+    self.food_time = 0
+    self.hill_time = 0
+    self.new_time = 0
+    self.wander_time = 0
 
   def do_setup(self, ants):
     self.hills = []
@@ -47,14 +54,22 @@ class MyBot:
       return True
 
     while step_loc != dest:
+      t = time()
       directions = ants.direction(step_loc, dest)
+      self.direction_time += time() - t
       for direction in directions:
+        t = time()
         step_loc = ants.destination(step_loc, direction)
+        self.destination_time += time() - t
         if ants.passable(step_loc):
           break
       else:
         # We hit this when all directions were not passable
+        #logging.error("Direction time: " + str(self.direction_time))
+        #logging.error("Destination time: " + str(self.destination_time))
         return False
+    #logging.error("Direction time: " + str(self.direction_time))
+    #logging.error("Destination time: " + str(self.destination_time))
     return True
 
     #if not ants.passable(dest):
@@ -124,6 +139,7 @@ class MyBot:
       self.do_move_location(ant_loc, hill_loc, ants)
 
   def find_new_territory(self, ants):
+    count = 0
     for loc in self.unseen[:]:
       if ants.visible(loc):
         self.unseen.remove(loc)
@@ -136,16 +152,21 @@ class MyBot:
       for dist, unseen_loc in unseen_dist:
         # TODO: Instead of bailing on this food if a path isn't known, 
         # we should still move in the best direction possible.
-        #logging.error("Find new path exists: " + str(ant_loc) + str(unseen_loc))
+        #logging.error(str(ant_loc))
+        #logging.error(str(self.orders.values()))
         if ant_loc in self.orders.values():
           break
-        logging.error("Ant: " + str(ant_loc))
-        #logging.error(str(self.orders))
+        count += 1
+        if count > 15:
+          # this is getting expensive, get out before we timeout!
+          break
         if self.path_exists(ant_loc, unseen_loc, ants):
           if self.do_move_location(ant_loc, unseen_loc, ants):
             break
         else:
           break
+
+    #logging.error("count: " + str(count))
 
   def wander_like_a_drunk(self, ants):
     # TODO: NOT REALLY RANDOM?
@@ -155,6 +176,7 @@ class MyBot:
         shuffle(directions)
         for direction in directions:
           if self.do_move_direction(ant_loc, direction, ants):
+            #logging.error("drunk")
             break
 
   def unblock_hills(self, ants):
@@ -170,12 +192,32 @@ class MyBot:
     for hill_loc in ants.my_hills():
       self.orders[hill_loc] = None
 
-    logging.error("Start turn")
+    #logging.error("Start turn")
+
+    t = time()
     self.find_food(ants)
+    self.food_time += time() - t
+
+    t = time()
     self.find_hills(ants)
+    self.hill_time += time() - t
+
+    t = time()
     self.find_new_territory(ants)
+    self.new_time += time() - t
+
     self.unblock_hills(ants)
+
+    t = time()
     self.wander_like_a_drunk(ants)
+    self.wander_time += time() - t
+
+    #print("food: " + str(self.food_time))
+    #print("hills: " + str(self.hill_time))
+    #print("new: " + str(self.new_time))
+    #print("wander: " + str(self.wander_time))
+
+    self.food_time = self.hill_time = self.new_time = self.wander_time = 0
 
 if __name__ == '__main__':
   try:
