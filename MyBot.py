@@ -15,6 +15,7 @@ class MyBot:
     self.hill_time = 0
     self.new_time = 0
     self.wander_time = 0
+    self.unblock_time = 0
 
   def do_setup(self, ants):
     self.hills = []
@@ -139,6 +140,7 @@ class MyBot:
       self.do_move_location(ant_loc, hill_loc, ants)
 
   def find_new_territory(self, ants):
+    return True
     count = 0
     for loc in self.unseen[:]:
       if ants.visible(loc):
@@ -176,7 +178,6 @@ class MyBot:
         shuffle(directions)
         for direction in directions:
           if self.do_move_direction(ant_loc, direction, ants):
-            #logging.error("drunk")
             break
 
   def unblock_hills(self, ants):
@@ -195,27 +196,34 @@ class MyBot:
     #logging.error("Start turn")
 
     t = time()
+    #logging.error("find food")
     self.find_food(ants)
     self.food_time += time() - t
 
     t = time()
+    #logging.error("find hills")
     self.find_hills(ants)
     self.hill_time += time() - t
 
     t = time()
+    #logging.error("find territory")
     self.find_new_territory(ants)
     self.new_time += time() - t
 
+    t = time()
     self.unblock_hills(ants)
+    self.unblock_time += time() - t
 
     t = time()
+    #logging.error("drunk")
     self.wander_like_a_drunk(ants)
     self.wander_time += time() - t
 
-    #print("food: " + str(self.food_time))
-    #print("hills: " + str(self.hill_time))
-    #print("new: " + str(self.new_time))
-    #print("wander: " + str(self.wander_time))
+    #logging.error("food: " + str(self.food_time))
+    #logging.error("hills: " + str(self.hill_time))
+    #logging.error("new: " + str(self.new_time))
+    #logging.error("wander: " + str(self.wander_time))
+    #logging.error("unblock: " + str(self.unblock_time))
 
     self.food_time = self.hill_time = self.new_time = self.wander_time = 0
 
