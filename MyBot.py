@@ -8,24 +8,15 @@ from time import time
 class MyBot:
   # define class level variables, will be remembered between turns
   def __init__(self):
-    self.checked_paths = set()
-    self.direction_time = 0
-    self.destination_time = 0
-    self.food_time = 0
-    self.hill_time = 0
-    self.new_time = 0
-    self.wander_time = 0
-    self.unblock_time = 0
+    self.move_list = {}
 
   def do_setup(self, ants):
     self.hills = []
+
     self.unseen = []
     for row in range(ants.rows):
       for col in range(ants.cols):
         self.unseen.append((row, col))
-
-  def inactive_ants(self, ants):
-    return [ant_loc for ant_loc in ants.my_ants() if ant_loc not in self.orders.values()]
 
   def do_move_direction(self, loc, direction, ants):
     new_loc = ants.destination(loc, direction)
@@ -42,69 +33,75 @@ class MyBot:
       if self.do_move_direction(loc, direction, ants):
         self.targets[dest] = loc
         return True
-        break
     else:
       return False
 
-  #TODO: At this state, path exists just checks for a direct
-  # navigatable path. Later we should search for a path possibility and
-  # follow that.
-  def path_exists(self, loc, dest, ants):
-    step_loc = loc
-    if loc == dest:
-      return True
+  def find_path(self, start, target, ants):
+    # Source: http://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html
+    # TODO: This doesn't consider map wrap around
+    def manhattan_distance(start, goal):
+      d = 1 # movement cost
+      return d * (abs(start[0] - goal[0]) + abs(start[1] - goal[1]))
 
-    while step_loc != dest:
-      t = time()
-      directions = ants.direction(step_loc, dest)
-      self.direction_time += time() - t
-      for direction in directions:
-        t = time()
-        step_loc = ants.destination(step_loc, direction)
-        self.destination_time += time() - t
-        if ants.passable(step_loc):
-          break
-      else:
-        # We hit this when all directions were not passable
-        #logging.error("Direction time: " + str(self.direction_time))
-        #logging.error("Destination time: " + str(self.destination_time))
-        return False
-    #logging.error("Direction time: " + str(self.direction_time))
-    #logging.error("Destination time: " + str(self.destination_time))
-    return True
+    def neighbors(pos):
+      directions = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+      return [((pos[0] + d_row) % ants.rows, (pos[1] + d_col) % ants.cols)
+          for (d_row, d_col) in directions]
 
-    #if not ants.passable(dest):
-    #  return False
+    def trace_path(node):
+      #logging.error("start trace path")
+      path = []
+      current = node
+      while current[PARENT] is not None:
+        #logging.error("parent!")
+        path.append(current[POS])
+        current = current[PARENT]
+      #logging.error("end trace path")
+      #logging.error("returned path: " + str(path))
+      return path
 
-    ##TODO: Using ants direction to step this probably isn't good
-    #test_loc = loc
-    ##TODO: Recurse this or track steps so we can bubble back up
-    ## and memoize them
-    #loc_list = set()
-    #while test_loc != dest:
-    #  loc_list.add(test_loc)
-    #  if (test_loc, dest, True) in self.checked_paths:
-    #    for good_loc in loc_list:
-    #      self.checked_paths.add((good_loc, dest, True))
-    #    return True
-    #  elif (test_loc, dest, False) in self.checked_paths:
-    #    for bad_loc in loc_list:
-    #      self.checked_paths.add((bad_loc, dest, False))
-    #    return False
-    #  directions = ants.direction(test_loc, dest)
-    #  #TODO: More than one direction
-    #  direction = directions[0]
-    #  logging.error("*****")
-    #  test_loc = ants.destination(test_loc, direction)
-    #  logging.error("new loc: " + str(test_loc))
-    #  logging.error("dest: " + str(dest))
-    #  if not ants.passable(test_loc):
-    #    for bad_loc in loc_list:
-    #      self.checked_paths.add((good_loc, dest, False))
-    #    return False
-    #for good_loc in loc_list:
-    #  self.checked_paths.add((good_loc, dest, True))
-    #return True
+    def has_node(node_list, pos):
+      #logging.error("*** has node ***")
+      #logging.error("given[pos] " + str(pos))
+      #logging.error("node_list[pos] " + str(node_list))
+      return any(pos == node[POS] for node in node_list)
+      #logging.error("val " + str(val))
+      #logging.error("*** has node ***")
+
+    # f = g + h
+    POS, F, G, H, PARENT, NUM = range(6)
+
+    open_list = []
+    closed_list = []
+
+    start_h = manhattan_distance(start, target)
+    current = [start, start_h, 0, start_h, None, 0]
+    open_list.append(current)
+    while open_list:
+      # Grab item with minimum F value
+      current = min(open_list, key=lambda x:x[F])
+      #logging.error("current[POS] " + str(current[POS]))
+      #logging.error("target " + str(target))
+      if current[POS] == target:
+        #logging.error("****")
+        #logging.error("****")
+        #logging.error("start: " + str(start))
+        return trace_path(current)
+      open_list.remove(current)
+      closed_list.append(current)
+      for neighbor in neighbors(current[POS]):
+        if ants.passable(neighbor) and not has_node(open_list, neighbor) and not has_node(closed_list, neighbor):
+          new = [0,0,0,0,0,0]
+          new[POS] = neighbor
+          new[G] = current[G] + 1
+          new[H] = manhattan_distance(new[POS], target)
+          new[F] = new[G] + new[H]
+          new[PARENT] = current
+          new[NUM] = current[NUM] + 1
+          open_list.append(new)
+    # Making it through the loop means we explored all points reachable but
+    # did not find our goal
+    return None
 
   def find_food(self, ants):
     ant_dist = []
@@ -113,13 +110,15 @@ class MyBot:
         dist = ants.distance(ant_loc, food_loc)
         ant_dist.append((dist, ant_loc, food_loc))
     ant_dist.sort()
+
     for dist, ant_loc, food_loc in ant_dist:
-      if food_loc not in self.targets and ant_loc not in self.targets.values():
-        # TODO: Instead of bailing on this food if a path isn't known, 
-        # we should still move in the best direction possible.
-        #logging.error("Find food path exists: " + str(ant_loc) + str(food_loc))
-        if self.path_exists(ant_loc, food_loc, ants):
-          self.do_move_location(ant_loc, food_loc, ants)
+      if food_loc not in self.targets and ant_loc not in self.targets.values() and ant_loc not in self.move_list and food_loc not in self.move_list.values():
+        dist, ant_loc, food_loc = ant_dist[0]
+        #logging.error("***")
+        path = self.find_path(ant_loc, food_loc, ants)
+        if path:
+          self.move_list[ant_loc] = path
+        #logging.error("***")
 
   def find_hills(self, ants):
     for hill_loc, hill_owner in ants.enemy_hills():
@@ -127,105 +126,71 @@ class MyBot:
         self.hills.append(hill_loc)
     ant_dist = []
     for hill_loc in self.hills:
-      for ant_loc in self.inactive_ants(ants):
-        # TODO: Instead of bailing on this food if a path isn't known, 
-        # we should still move in the best direction possible.
-        #logging.error("Find hills path exists: " + str(ant_loc) + str(hill_loc))
-        if ant_loc not in self.orders.values():
-          if self.path_exists(ant_loc, hill_loc, ants):
-            dist = ants.distance(ant_loc, hill_loc)
-            ant_dist.append((dist, ant_loc))
+      for ant_loc in ants.my_ants():
+        if ant_loc not in self.move_list:
+          dist = ants.distance(ant_loc, hill_loc)
+          ant_dist.append((dist, ant_loc))
     ant_dist.sort()
-    for dist, ant_loc in ant_dist:
-      self.do_move_location(ant_loc, hill_loc, ants)
 
-  def find_new_territory(self, ants):
-    return True
-    count = 0
+    for dist, ant_loc in ant_dist:
+      path = self.find_path(ant_loc, hill_loc, ants)
+      if path:
+        self.move_list[ant_loc] = path
+
+  def find_new(self, ants):
     for loc in self.unseen[:]:
       if ants.visible(loc):
         self.unseen.remove(loc)
-    for ant_loc in self.inactive_ants(ants):
+    for ant_loc in ants.my_ants():
+      #check
       unseen_dist = []
       for unseen_loc in self.unseen:
         dist = ants.distance(ant_loc, unseen_loc)
         unseen_dist.append((dist, unseen_loc))
       unseen_dist.sort()
+
       for dist, unseen_loc in unseen_dist:
-        # TODO: Instead of bailing on this food if a path isn't known, 
-        # we should still move in the best direction possible.
-        #logging.error(str(ant_loc))
-        #logging.error(str(self.orders.values()))
-        if ant_loc in self.orders.values():
-          break
-        count += 1
-        if count > 15:
-          # this is getting expensive, get out before we timeout!
-          break
-        if self.path_exists(ant_loc, unseen_loc, ants):
-          if self.do_move_location(ant_loc, unseen_loc, ants):
-            break
-        else:
-          break
-
-    #logging.error("count: " + str(count))
-
-  def wander_like_a_drunk(self, ants):
-    # TODO: NOT REALLY RANDOM?
-    directions = ['n','e','s','w']
-    for ant_loc in ants.my_ants():
-      if ant_loc not in self.orders.values():
-        shuffle(directions)
-        for direction in directions:
-          if self.do_move_direction(ant_loc, direction, ants):
-            break
-
-  def unblock_hills(self, ants):
-    for hill_loc in ants.my_hills():
-      if hill_loc in ants.my_ants() and hill_loc not in self.orders.values():
-        for direction in ('n','e','s','w'):
-          if self.do_move_direction(hill_loc, direction, ants):
-            break
+        if unseen_loc not in self.move_list.values() and ant_loc not in self.move_list:
+          path = self.find_path(ant_loc, unseen_loc, ants)
+          if path:
+            self.move_list[ant_loc] = path
 
   def do_turn(self, ants):
     self.orders = {}
     self.targets = {}
-    for hill_loc in ants.my_hills():
-      self.orders[hill_loc] = None
 
-    #logging.error("Start turn")
+    # Do we need this?
+    #for hill_loc in ants.my_hills():
+    #  self.orders[hill_loc] = None
 
-    t = time()
-    #logging.error("find food")
     self.find_food(ants)
-    self.food_time += time() - t
+    self.find_new(ants)
 
-    t = time()
-    #logging.error("find hills")
-    self.find_hills(ants)
-    self.hill_time += time() - t
+    #logging.error("targets: " + str(self.targets))
+    #logging.error("move list post food" + str(self.move_list))
 
-    t = time()
-    #logging.error("find territory")
-    self.find_new_territory(ants)
-    self.new_time += time() - t
+    new_move_list = {}
+    for ant_loc, ant_moves in self.move_list.items():
+      #logging.error("we be movin")
+      #logging.error("ant_loc " + str(ant_loc))
+      #logging.error("ant_moves " + str(ant_moves))
+      next_move = ant_moves.pop()
+      #logging.error("next move " + str(next_move))
+      #logging.error("they be hatin")
+      if self.do_move_location(ant_loc, next_move, ants):
+        #logging.error("Moved ant " + str(ant_loc) + " to " + str(next_move))
+        # This will become the global move list later
+        # containing only successfully walked paths
+        if len(ant_moves):
+          new_move_list[next_move] = ant_moves
+      #else:
+      #  logging.error("move failed!")
 
-    t = time()
-    self.unblock_hills(ants)
-    self.unblock_time += time() - t
+    # TODO: If this gets large, will we need to not slam garbage collection
+    # so hard?
+    self.move_list = new_move_list
 
-    t = time()
-    #logging.error("drunk")
-    self.wander_like_a_drunk(ants)
-    self.wander_time += time() - t
-
-    #logging.error("food: " + str(self.food_time))
-    #logging.error("hills: " + str(self.hill_time))
-    #logging.error("new: " + str(self.new_time))
-    #logging.error("wander: " + str(self.wander_time))
-    #logging.error("unblock: " + str(self.unblock_time))
-
-    self.food_time = self.hill_time = self.new_time = self.wander_time = 0
+    #logging.error("End turn")
 
 if __name__ == '__main__':
   try:
