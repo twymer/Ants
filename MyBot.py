@@ -25,6 +25,7 @@ class MyBot:
     self.find_new_time = 0
 
   def do_setup(self, ants):
+    self.aborted_count = 0
     self.hills = []
 
     self.unseen = []
@@ -66,7 +67,7 @@ class MyBot:
     # TODO: This doesn't consider map wrap around
     # Source: http://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html
     def manhattan_distance(start, goal):
-      d = 1 # movement cost
+      d = 2 # movement cost
       return d * (abs(start[0] - goal[0]) + abs(start[1] - goal[1]))
 
     def neighbors(pos):
@@ -102,8 +103,9 @@ class MyBot:
     while open_set:
       #TODO: Timing out and sending the ant to this place isn't very nice
       # Maybe flag it as a low quality path?
-      if current.depth > 50:
-        logging.error("Search aborted early!")
+      if current.depth > max(50, 100 - self.aborted_count * 20):
+        self.aborted_count += 1
+        logging.error("Search aborted early! " + str(current.depth) + " turns.")
         return trace_path(current)
 
       # Grab item with minimum F value
@@ -185,11 +187,11 @@ class MyBot:
       for ant_loc in ants.my_ants():
         if ant_loc not in self.move_list:
           dist = ants.distance(ant_loc, hill_loc)
-          ant_dist.append((dist, ant_loc))
+          ant_dist.append((dist, ant_loc, hill_loc))
     ant_dist.sort()
 
-    for dist, ant_loc in ant_dist:
-      if ant_loc not in self.move_list:
+    for dist, ant_loc, hill_loc in ant_dist:
+      if ant_loc not in self.move_list and not any(hill_loc in x for x in self.move_list.values()):
         logging.error("Find hills path")
         t = time()
         path = self.find_path(ant_loc, hill_loc, ants)
@@ -250,6 +252,8 @@ class MyBot:
     logging.error("*****")
     logging.error("Start turn")
     logging.error("*****")
+
+    self.aborted_count = 0
 
     # Mourn our fallen comrades!
     for dead_ant, owner in ants.dead_list.items():
