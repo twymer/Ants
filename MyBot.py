@@ -54,7 +54,7 @@ class MyBot:
     # TODO: This doesn't consider map wrap around
     # Source: http://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html
     def manhattan_distance(start, goal):
-      d = 4 # movement cost
+      d = 1 # movement cost
       return d * (abs(start[0] - goal[0]) + abs(start[1] - goal[1]))
 
     def neighbors(pos):
@@ -88,6 +88,12 @@ class MyBot:
     current = Node(start_position, start_h, 0, start_h, None, 0)
     open_set.add(current)
     while open_set:
+      #TODO: Timing out and sending the ant to this place isn't very nice
+      # Maybe flag it as a low quality path?
+      if current.depth > 50:
+        logging.error("Search aborted early!")
+        return trace_path(current)
+
       # Grab item with minimum F value
       current = min(open_set, key=lambda x:x.f)
       #logging.error("current.position " + str(current.position))
@@ -143,11 +149,11 @@ class MyBot:
         if path:
           #logging.error("path found!")
           self.move_list[ant_loc] = path
-        else:
-          # Go ahead and add the ant with no path to move list... this usually
-          # means a game bug and we don't want to go crazy trying to path him
-          # TODO: fix this..
-          self.move_list[ant_loc] = None
+        #else:
+        #  # Go ahead and add the ant with no path to move list... this usually
+        #  # means a game bug and we don't want to go crazy trying to path him
+        #  # TODO: fix this..
+        #  self.move_list[ant_loc] = []
 
         #logging.error("***")
 
@@ -172,11 +178,11 @@ class MyBot:
         logging.error("path time: " + str(time() - t))
         if path:
           self.move_list[ant_loc] = path
-        else:
-          # Go ahead and add the ant with no path to move list... this usually
-          # means a game bug and we don't want to go crazy trying to path him
-          # TODO: fix this..
-          self.move_list[ant_loc] = None
+        #else:
+        #  # Go ahead and add the ant with no path to move list... this usually
+        #  # means a game bug and we don't want to go crazy trying to path him
+        #  # TODO: fix this..
+        #  self.move_list[ant_loc] = []
 
   def find_new(self, ants):
     time_start = time()
@@ -207,11 +213,11 @@ class MyBot:
           if path:
             #logging.error("added to move list")
             self.move_list[ant_loc] = path
-          else:
-            # Go ahead and add the ant with no path to move list... this usually
-            # means a game bug and we don't want to go crazy trying to path him
-            # TODO: fix this..
-            self.move_list[ant_loc] = None
+          #else:
+          #  # Go ahead and add the ant with no path to move list... this usually
+          #  # means a game bug and we don't want to go crazy trying to path him
+          #  # TODO: fix this..
+          #  self.move_list[ant_loc] = None
     self.find_new_time += time() - time_start - self.pathing_time - path_time_start
 
   def do_turn(self, ants):
