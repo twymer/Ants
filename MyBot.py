@@ -19,9 +19,9 @@ class MyBot:
   def initialize_timing(self):
     self.pathing_time = 0
     self.tracing_time = 0
+    self.find_new_time = 0
 
   def do_setup(self, ants):
-    self.initialize_timing()
     self.hills = []
 
     self.unseen = []
@@ -94,9 +94,9 @@ class MyBot:
       #logging.error("goal " + str(goal))
       if current.position == goal_position:
         #logging.error("start: " + str(start))
-        logging.error("****")
-        logging.error("steps to find path: " + str(current.depth))
-        logging.error("****")
+        #logging.error("****")
+        #logging.error("steps to find path: " + str(current.depth))
+        #logging.error("****")
         return trace_path(current)
       open_set.remove(current)
       closed_set.add(current)
@@ -139,7 +139,7 @@ class MyBot:
         logging.error("Find food path from " + str(ant_loc) + " to " + str(food_loc))
         t = time()
         path = self.find_path(ant_loc, food_loc, ants)
-        logging.error("path time: " + str(time() - t))
+        #logging.error("path time: " + str(time() - t))
         if path:
           #logging.error("path found!")
           self.move_list[ant_loc] = path
@@ -179,6 +179,8 @@ class MyBot:
           self.move_list[ant_loc] = None
 
   def find_new(self, ants):
+    time_start = time()
+    path_time_start = self.pathing_time
     for loc in self.unseen[:]:
       if ants.visible(loc):
         self.unseen.remove(loc)
@@ -205,17 +207,19 @@ class MyBot:
             # means a game bug and we don't want to go crazy trying to path him
             # TODO: fix this..
             self.move_list[ant_loc] = None
+    self.find_new_time += time() - time_start - self.pathing_time - path_time_start
 
   def do_turn(self, ants):
+    self.initialize_timing()
     t = time()
     self.orders = {}
     self.targets = {}
-    logging.error("*****")
-    logging.error("*****")
-    logging.error("*****")
-    logging.error("*****")
+    #logging.error("*****")
+    #logging.error("*****")
+    #logging.error("*****")
     logging.error("*****")
     logging.error("Start turn")
+    logging.error("*****")
 
     # Do we need this?
     #for hill_loc in ants.my_hills():
@@ -257,8 +261,8 @@ class MyBot:
     logging.error("global tracing time: " + str(self.global_tracing_time))
     logging.error("*****")
     logging.error("*****")
-    logging.error("*****")
     logging.error("non pathing time: " + str(time() - t - self.pathing_time))
+    logging.error("find new time: " + str(self.find_new_time))
     logging.error("End turn")
 
 if __name__ == '__main__':
