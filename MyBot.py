@@ -9,6 +9,7 @@ from time import time
 class MyBot:
   # define class level variables, will be remembered between turns
   def __init__(self):
+    self.enemy_hills = set()
     self.move_list = {}
     self.initialize_global_timing()
 
@@ -158,7 +159,14 @@ class MyBot:
         #logging.error("***")
 
   def find_hills(self, ants):
-    for hill_loc, hill_owner in ants.enemy_hills():
+    for hill, owner in self.enemy_hills.copy():
+      # If we can see a hill but it's not in the enemy hills list,
+      # that means we have destroyed it
+      if ants.visible(hill) and hill not in ants.enemy_hills():
+        self.enemy_hills.remove((hill, owner))
+
+    self.enemy_hills = self.enemy_hills.union(ants.enemy_hills())
+    for hill_loc, hill_owner in self.enemy_hills:
       if hill_loc not in self.hills:
         self.hills.append(hill_loc)
     ant_dist = []
