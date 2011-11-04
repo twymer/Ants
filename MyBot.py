@@ -6,6 +6,8 @@ import logging
 
 from time import time
 
+MY_ANT = 0
+
 class MyBot:
   # define class level variables, will be remembered between turns
   def __init__(self):
@@ -248,6 +250,11 @@ class MyBot:
     logging.error("*****")
     logging.error("Start turn")
     logging.error("*****")
+
+    # Mourn our fallen comrades!
+    for dead_ant, owner in ants.dead_list.items():
+      if owner == [MY_ANT] and dead_ant in self.move_list:
+        del self.move_list[dead_ant]
 
     # Do we need this?
     #for hill_loc in ants.my_hills():
