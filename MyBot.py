@@ -28,7 +28,16 @@ class MyBot:
     self.unseen = []
     for row in range(ants.rows):
       for col in range(ants.cols):
-        self.unseen.append((row, col))
+        directions = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+        count = 0
+        for d_row, d_col in directions:
+          if not ants.passable((((row+d_row) % ants.rows), (col+d_col) % ants.cols)):
+            count += 1
+
+        # If there is only 1 side available this is a crevice in the
+        # wall that we don't want to consider for exploration
+        if count < 3:
+          self.unseen.append((row, col))
 
   def do_move_direction(self, loc, direction, ants):
     new_loc = ants.destination(loc, direction)
