@@ -95,7 +95,7 @@ class MyBot:
       if current.position == goal_position:
         #logging.error("start: " + str(start))
         #logging.error("****")
-        #logging.error("steps to find path: " + str(current.depth))
+        logging.error("steps to find path: " + str(current.depth))
         #logging.error("****")
         return trace_path(current)
       open_set.remove(current)
@@ -181,10 +181,15 @@ class MyBot:
   def find_new(self, ants):
     time_start = time()
     path_time_start = self.pathing_time
+
     for loc in self.unseen[:]:
       if ants.visible(loc):
         self.unseen.remove(loc)
+
     for ant_loc in ants.my_ants():
+      if ant_loc in self.move_list:
+        continue
+
       #check
       unseen_dist = []
       for unseen_loc in self.unseen:
@@ -193,7 +198,7 @@ class MyBot:
       unseen_dist.sort()
 
       for dist, unseen_loc in unseen_dist:
-        if self.move_list and not any(unseen_loc in x for x in self.move_list.values()) and ant_loc not in self.move_list:
+        if self.move_list and ant_loc not in self.move_list and not any(unseen_loc in x for x in self.move_list.values()):
           logging.error("Find territory path from " + str(ant_loc) + " to " + str(unseen_loc))
           t = time()
           path = self.find_path(ant_loc, unseen_loc, ants)
