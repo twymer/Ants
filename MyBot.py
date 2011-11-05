@@ -124,7 +124,10 @@ class MyBot:
         #logging.error("  in open? " + str(has_node(open_list, neighbor)))
         #logging.error("  in closed? " + str(has_node(closed_list, neighbor)))
         #logging.error("  is passable? " + str(ants.passable(neighbor)))
-        if ants.passable(neighbor) and not has_node_with_position(open_set, neighbor) and not has_node_with_position(closed_set, neighbor):
+        if (ants.passable(neighbor) and # Add if passable..
+            not has_node_with_position(open_set, neighbor) and # and not open
+            not has_node_with_position(closed_set, neighbor) and # or closed
+            (current.depth > 1 or ants.unoccupied(neighbor))): # if occupied and next to start
           new_g = current.g + 1
           new_h = manhattan_distance(neighbor, goal_position)
           new = Node(
