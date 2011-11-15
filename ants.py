@@ -54,6 +54,8 @@ class Ants():
         self.spawnradius2 = 0
         self.turns = 0
 
+        self.neighbors = {}
+
     def setup(self, data):
         'parse initial input and setup starting game state'
         for line in data.split('\n'):
@@ -82,14 +84,21 @@ class Ants():
         self.map = [[LAND for col in range(self.cols)]
                     for row in range(self.rows)]
 
+        directions = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+        for r in range(self.rows):
+          for c in range(self.cols):
+            self.neighbors[(r,c)] = [((r + d_row) % self.rows, (c + d_col) % self.cols)
+              for (d_row, d_col) in directions]
+
+
     def update(self, data):
         'parse engine input and update the game state'
         # start timer
         self.turn_start_time = time.clock()
-        
+
         # reset vision
         self.vision = None
-        
+
         # clear hill, ant and food data
         self.hill_list = {}
         for row, col in self.ant_list.keys():
@@ -101,7 +110,7 @@ class Ants():
         for row, col in self.food_list:
             self.map[row][col] = LAND
         self.food_list = []
-        
+
         # update map and create new ant and food lists
         for line in data.split('\n'):
             line = line.strip().lower()
@@ -130,21 +139,21 @@ class Ants():
                         elif tokens[0] == 'h':
                             owner = int(tokens[3])
                             self.hill_list[(row, col)] = owner
-                        
+
     def time_remaining(self):
         return self.turntime - int(1000 * (time.clock() - self.turn_start_time))
-    
+
     def issue_order(self, order):
         'issue an order by writing the proper ant location and direction'
         (row, col), direction = order
         sys.stdout.write('o %s %s %s\n' % (row, col, direction))
         sys.stdout.flush()
-        
+
     def finish_turn(self):
         'finish the turn by writing the go line'
         sys.stdout.write('go\n')
         sys.stdout.flush()
-    
+
     def my_hills(self):
         return [loc for loc, owner in self.hill_list.items()
                     if owner == MY_ANT]
@@ -152,7 +161,7 @@ class Ants():
     def enemy_hills(self):
         return [(loc, owner) for loc, owner in self.hill_list.items()
                     if owner != MY_ANT]
-        
+
     def my_ants(self):
         'return a list of all my ants'
         return [(row, col) for (row, col), owner in self.ant_list.items()
@@ -172,7 +181,7 @@ class Ants():
         'true if not water'
         row, col = loc
         return self.map[row][col] != WATER
-    
+
     def unoccupied(self, loc):
         'true if no ants are at the location'
         row, col = loc
@@ -182,7 +191,7 @@ class Ants():
         'calculate a new location given the direction and wrap correctly'
         row, col = loc
         d_row, d_col = AIM[direction]
-        return ((row + d_row) % self.rows, (col + d_col) % self.cols)        
+        return ((row + d_row) % self.rows, (col + d_col) % self.cols)
 
     def distance(self, loc1, loc2):
         'calculate the closest distance between to locations'
@@ -246,7 +255,7 @@ class Ants():
                     self.vision[a_row+v_row][a_col+v_col] = True
         row, col = loc
         return self.vision[row][col]
-    
+
     def render_text_map(self):
         'return a pretty string representing the map'
         tmp = ''
