@@ -38,9 +38,9 @@ class Search:
 
   def find_path(self, start_position, goal_position, next_turn_list):
     if not self.environment.passable(goal_position):
-        return False
+      return False
     Node = namedtuple('Node', 'position f g h parent depth')
-    #logging.error("find_path")
+    ##logging.error("find_path")
 
     def trace_path(final_node):
       t = time()
@@ -68,7 +68,7 @@ class Search:
       del open_nodes[current.position]
       #current = min(open_nodes.values(), key=lambda x:x.f)
       if current.position == goal_position:
-        logging.error("steps to find path: " + str(current.depth))
+        #logging.error("steps to find path: " + str(current.depth))
         return trace_path(current)
       closed_nodes[current.position] = current
       for neighbor in self.environment.neighbors[current.position]:
@@ -79,12 +79,12 @@ class Search:
           new_g = current.g + 1
           new_h = self.manhattan_distance(neighbor, goal_position)
           new = Node(
-            neighbor,
-            new_g,
-            new_h,
-            new_g + new_h,
-            current,
-            current.depth + 1)
+              neighbor,
+              new_g,
+              new_h,
+              new_g + new_h,
+              current,
+              current.depth + 1)
           open_nodes[new.position] = new
           heapq.heappush(open_nodes_heap, (new.f, new))
       # If first item has no neighbors, ant is trapped, put a noop on his move list
@@ -138,6 +138,9 @@ class MyBot:
     else:
       return False
 
+  def get_path(self, start, goal):
+    return self.search.find_path(start, goal, self.next_turn_list)
+
   def find_food(self, ants):
     ant_dist = []
     for food_loc in ants.food():
@@ -148,12 +151,12 @@ class MyBot:
 
     for dist, ant_loc, food_loc in ant_dist:
       if food_loc not in self.targets and ant_loc not in self.orders:
-        path = self.search.find_path(ant_loc, food_loc, self.next_turn_list)
+        path = self.get_path(ant_loc, food_loc)
         if path:
           first_move = path.pop()
         else:
           continue
-        logging.error("food from: " + str(ant_loc) + " to " + str(first_move))
+        #logging.error("food from: " + str(ant_loc) + " to " + str(first_move))
         if first_move not in self.next_turn_list:
           self.do_move_location(ant_loc, first_move, ants)
           self.orders[ant_loc] = food_loc
@@ -164,11 +167,11 @@ class MyBot:
     for hill, owner in self.enemy_hills.copy():
       # If we can see a hill but it's not in the enemy hills list,
       # that means we have destroyed it
-      logging.error("enemy hills: " + str(ants.enemy_hills()))
-      logging.error("hill: " + str(hill))
+      #logging.error("enemy hills: " + str(ants.enemy_hills()))
+      #logging.error("hill: " + str(hill))
 # hill_loc in x for x in self.move_list.values()
       if ants.visible(hill) and not any(hill == x[0] for x in ants.enemy_hills()):
-        logging.error("*** REMOVE HILL ***")
+        #logging.error("*** REMOVE HILL ***")
         self.enemy_hills.remove((hill, owner))
 
     self.enemy_hills = self.enemy_hills.union(ants.enemy_hills())
@@ -190,12 +193,12 @@ class MyBot:
     # self.targets = set()
     for dist, ant_loc, hill_loc in ant_dist:
       if ant_loc not in self.orders and hill_loc not in self.targets:
-        path = self.search.find_path(ant_loc, hill_loc, self.next_turn_list)
+        path = self.get_path(ant_loc, hill_loc)
         if path:
           first_move = path.pop()
         else:
           continue
-        logging.error("hill from: " + str(ant_loc) + " to " + str(first_move))
+        #logging.error("hill from: " + str(ant_loc) + " to " + str(first_move))
         if first_move not in self.next_turn_list:
           self.do_move_location(ant_loc, first_move, ants)
           self.orders[ant_loc] = hill_loc
@@ -232,26 +235,26 @@ class MyBot:
           continue
         if unseen_loc not in self.targets and ant_loc not in self.orders:
           # TODO: this code isn't very DRY
-          path = self.search.find_path(ant_loc, unseen_loc, self.next_turn_list)
+          path = self.get_path(ant_loc, unseen_loc)
           if path:
             first_move = path.pop()
           else:
             continue
-          logging.error("new from: " + str(ant_loc) + " to " + str(first_move))
+          #logging.error("new from: " + str(ant_loc) + " to " + str(first_move))
           if first_move not in self.next_turn_list:
             self.do_move_location(ant_loc, first_move, ants)
             self.orders[ant_loc] = unseen_loc
             self.next_turn_list.add(first_move)
             self.targets.add(unseen_loc)
           else:
-            logging.error("first move taken")
+            pass
+            #logging.error("first move taken")
 
 
   def do_turn(self, ants):
-    logging.error("*****")
-    logging.error("Start turn")
-    logging.error("*****")
-
+    #logging.error("*****")
+    #logging.error("Start turn")
+    #logging.error("*****")
     self.initialize_timing()
     t = time()
 
@@ -264,26 +267,26 @@ class MyBot:
     # Do we need this?
     #for hill_loc in ants.my_hills():
     #  self.orders[hill_loc] = None
-    #logging.error("move list start turn" + str(self.move_list))
+    ##logging.error("move list start turn" + str(self.move_list))
 
     self.find_food(ants)
     self.find_hills(ants)
     self.find_new(ants)
 
-    # logging.error("*****")
-    # logging.error("*****")
+    # #logging.error("*****")
+    # #logging.error("*****")
     # self.global_pathing_time += self.pathing_time - self.tracing_time
-    # logging.error("turns pathing time: " + str(self.pathing_time - self.tracing_time))
-    # logging.error("global pathing time: " + str(self.global_pathing_time))
+    # #logging.error("turns pathing time: " + str(self.pathing_time - self.tracing_time))
+    # #logging.error("global pathing time: " + str(self.global_pathing_time))
 
     # self.global_tracing_time += self.tracing_time
-    # logging.error("turns tracing time: " + str(self.tracing_time))
-    # logging.error("global tracing time: " + str(self.global_tracing_time))
-    # logging.error("non pathing time: " + str(time() - t - self.pathing_time))
-    # logging.error("find new time: " + str(self.find_new_time))
-    logging.error("*****")
-    logging.error("End turn")
-    logging.error("*****")
+    # #logging.error("turns tracing time: " + str(self.tracing_time))
+    # #logging.error("global tracing time: " + str(self.global_tracing_time))
+    # #logging.error("non pathing time: " + str(time() - t - self.pathing_time))
+    # #logging.error("find new time: " + str(self.find_new_time))
+    #logging.error("*****")
+    #logging.error("End turn")
+    #logging.error("*****")
 
 if __name__ == '__main__':
   try:
