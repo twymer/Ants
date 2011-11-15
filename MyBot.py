@@ -167,7 +167,7 @@ class MyBot:
       logging.error("enemy hills: " + str(ants.enemy_hills()))
       logging.error("hill: " + str(hill))
 # hill_loc in x for x in self.move_list.values()
-      if ants.visible(hill) and not any(hill == x for x in ants.enemy_hills()[0]):
+      if ants.visible(hill) and not any(hill == x[0] for x in ants.enemy_hills()):
         logging.error("*** REMOVE HILL ***")
         self.enemy_hills.remove((hill, owner))
 
@@ -208,6 +208,11 @@ class MyBot:
       if ants.visible(loc):
         self.unseen.remove(loc)
 
+    if len(self.unseen) == 0:
+      for row in range(ants.rows):
+        for col in range(ants.cols):
+          self.unseen.append((row, col))
+
     for ant_loc in ants.my_ants():
       if ant_loc in self.orders:
         continue
@@ -221,6 +226,10 @@ class MyBot:
       unseen_dist.sort()
 
       for dist, unseen_loc in unseen_dist:
+        # TODO:
+        # This is a hack to fix a bug where new path is tried for same start and end pos
+        if unseen_loc == ant_loc:
+          continue
         if unseen_loc not in self.targets and ant_loc not in self.orders:
           # TODO: this code isn't very DRY
           path = self.search.find_path(ant_loc, unseen_loc, self.next_turn_list)
