@@ -99,16 +99,20 @@ class MyBot:
   # define class level variables, will be remembered between turns
   def __init__(self):
     self.enemy_hills = set()
-    # self.initialize_global_timing()
+    self.initialize_timing()
 
   def initialize_global_timing(self):
-    self.global_pathing_time = 0
-    self.global_tracing_time = 0
+    pass
+    # self.inner_unseen_time = 0
+    # self.unseen_pathing_time = 0
+    # self.global_pathing_time = 0
+    # self.global_tracing_time = 0
 
   def initialize_timing(self):
-    self.pathing_time = 0
-    self.tracing_time = 0
-    self.find_new_time = 0
+    self.inner_unseen_time = 0
+    self.unseen_pathing_time = 0
+    self.unseen_time = 0
+    self.find_food_time = 0
 
   def do_setup(self, ants):
     self.hills = []
@@ -203,35 +207,47 @@ class MyBot:
           self.targets.add(hill_loc)
 
   def find_new(self, ants):
+    logging.error("Unseen size: " + str(len(self.unseen)))
+    # Reset list now that it's empty..
+    if len(self.unseen) == 0:
+      logging.error("Unseen list reset!")
+      for row in range(ants.rows):
+        for col in range(ants.cols):
+          self.unseen.append((row, col))
+
     # Remove currently visible territory
     for loc in self.unseen[:]:
       if ants.visible(loc):
         self.unseen.remove(loc)
 
-    if len(self.unseen) == 0:
-      for row in range(ants.rows):
-        for col in range(ants.cols):
-          self.unseen.append((row, col))
-
     for ant_loc in ants.my_ants():
       if ant_loc in self.orders:
         continue
 
-      unseen_dist = []
+      inner_t = ants.time_remaining()
+      unseen_dist_heap = []
       for unseen_loc in self.unseen:
+        if unseen_loc == ant_loc:
+          continue
+        if len(unseen_dist_heap) > 2000:
+          logging.error("stop .. " + str(len(self.unseen)))
+          break
         if unseen_loc in self.targets:
           continue
         dist = self.search.manhattan_distance(ant_loc, unseen_loc)
-        unseen_dist.append((dist, unseen_loc))
-      unseen_dist.sort()
+        # unseen_dist.append((dist, unseen_loc))
+        heapq.heappush(unseen_dist_heap, (dist, unseen_loc))
+      logging.error("find and sort distances took " + str(inner_t - ants.time_remaining()))
+      self.inner_unseen_time += inner_t - ants.time_remaining()
 
-      for dist, unseen_loc in unseen_dist:
-        # TODO:
-        # This is a hack to fix a bug where new path is tried for same start and end pos
-        if unseen_loc == ant_loc:
-          continue
+
+      # for dist, unseen_loc in unseen_dist:
+      while unseen_dist_heap:
+        dist, unseen_loc = heapq.heappop(unseen_dist_heap)
         if unseen_loc not in self.targets and ant_loc not in self.orders:
           # TODO: this code isn't very DRY
+          if not self.enough_time_to_path(ants):
+            return
           path = self.search.find_path(ant_loc, unseen_loc, self.next_turn_list)
           if path:
             first_move = path.pop()
@@ -243,9 +259,34 @@ class MyBot:
             self.orders[ant_loc] = unseen_loc
             self.next_turn_list.add(first_move)
             self.targets.add(unseen_loc)
+            break
           else:
             logging.error("first move taken")
 
+
+  def enough_time(self, ants):
+    allowable_time_percent = 30
+    if ants.time_remaining() / ants.turntime > allowable_time_percent / 100:
+      return True
+    else:
+      logging.error("***")
+      logging.error("***")
+      logging.error("***")
+      logging.error("OUT OF TIME!")
+      logging.error("***")
+      logging.error("***")
+      logging.error("***")
+      return False
+
+  def enough_time_to_path(self,ants):
+    logging.error("time remaining: " + str(ants.time_remaining() / ants.turntime))
+    allowable_time_percent = 10
+    if ants.time_remaining() / ants.turntime > allowable_time_percent / 100:
+      return True
+    else:
+      logging.error("***")
+      logging.error("OUT OF TIME TO PATH!")
+      logging.error("***")
 
   def do_turn(self, ants):
     logging.error("*****")
@@ -266,23 +307,30 @@ class MyBot:
     #  self.orders[hill_loc] = None
     #logging.error("move list start turn" + str(self.move_list))
 
-    self.find_food(ants)
-    self.find_hills(ants)
-    self.find_new(ants)
+    tt1 = ants.time_remaining()
+    if self.enough_time(ants):
+      self.find_food(ants)
+    tt1 -= ants.time_remaining()
 
-    # logging.error("*****")
-    # logging.error("*****")
-    # self.global_pathing_time += self.pathing_time - self.tracing_time
-    # logging.error("turns pathing time: " + str(self.pathing_time - self.tracing_time))
-    # logging.error("global pathing time: " + str(self.global_pathing_time))
+    tt2 = ants.time_remaining()
+    if self.enough_time(ants):
+      self.find_hills(ants)
+    tt2 -= ants.time_remaining()
 
-    # self.global_tracing_time += self.tracing_time
-    # logging.error("turns tracing time: " + str(self.tracing_time))
-    # logging.error("global tracing time: " + str(self.global_tracing_time))
-    # logging.error("non pathing time: " + str(time() - t - self.pathing_time))
-    # logging.error("find new time: " + str(self.find_new_time))
+    tt3 = ants.time_remaining()
+    if self.enough_time(ants):
+      self.find_new(ants)
+    tt3 -= ants.time_remaining()
+
+    logging.error("food time: " + str(tt1))
+    logging.error("hills time: " + str(tt2))
+    logging.error("explore time: " + str(tt3))
+
     logging.error("*****")
     logging.error("End turn")
+    logging.error("Took " + str(ants.turntime - ants.time_remaining()) + " of total " + str(ants.turntime))
+    logging.error("inner unseen time: " + str(self.inner_unseen_time))
+    self.initialize_timing()
     logging.error("*****")
 
 if __name__ == '__main__':
