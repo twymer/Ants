@@ -180,7 +180,8 @@ class Ants():
     def passable(self, loc):
         'true if not water'
         row, col = loc
-        return self.map[row][col] != WATER
+        # return self.map[row][col] != WATER
+        return self.map[row][col] > WATER
 
     def unoccupied(self, loc):
         'true if no ants are at the location'
