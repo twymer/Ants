@@ -9,7 +9,7 @@ from time import time
 
 MY_ANT = 0
 
-# version 0.1.0 -- DIRTY
+# version 0.1.2
 class Search:
   def __init__(self, env):
     self.environment = env
@@ -17,6 +17,7 @@ class Search:
     self.M = self.environment.cols
 
   def manhattan_distance(self, start, goal):
+    d = 1
     s0 = start[0]
     g0 = goal[0]
     # TODO: Remove this before end of contest
@@ -34,15 +35,38 @@ class Search:
     if s1 > g1:
       g1, s1 = s1, g1
 
-    return min((g0 - s0, s0 + self.N - g0)) + min((g1 - s1, s1 + self.M - g1))
+    return d * (min((g0 - s0, s0 + self.N - g0)) + min((g1 - s1, s1 + self.M - g1)))
 
-  def find_path(self, start_position, goal_position, next_turn_list):
-    if not self.environment.passable(goal_position):
-        return False
+  def visualize_path(self, start, goal):
+    path, open_list, closed_list = self.path_data(start, goal)
+    if not path:
+      return
+    # Copy each line individually so we don't screw up grid
+    g = [list(line) for line in self.environment.grid]
+    for loc in open_list:
+      g[loc[0]][loc[1]] = 'o'
+    for loc in closed_list:
+      g[loc[0]][loc[1]] = 'o'
+    for loc in path:
+      g[loc[0]][loc[1]] = 'x'
+    for row in g:
+      print(*row, sep='')
+
+  def find_path(self, start_position, goal_position, next_turn_list = []):
+    path, _, _ = self.calc_path(start_position, goal_position, next_turn_list)
+    return path
+
+  def path_data(self, start_position, goal_position):
+    return self.calc_path(start_position, goal_position, [])
+
+  def calc_path(self, start_position, goal_position, next_turn_list):
+    if (not self.environment.passable(goal_position) or
+        not self.environment.passable(goal_position)):
+      return None, None, None
     Node = namedtuple('Node', 'position f g h parent depth')
     #logging.error("find_path")
 
-    def trace_path(final_node):
+    def trace_path(final_node, open_nodes, closed_nodes):
       t = time()
       path = []
       current = final_node
@@ -51,7 +75,7 @@ class Search:
         current = current.parent
 
       # self.tracing_time += time() - t
-      return path
+      return path, open_nodes, closed_nodes
 
     open_nodes = {}
     open_nodes_heap = []
@@ -68,8 +92,8 @@ class Search:
       del open_nodes[current.position]
       #current = min(open_nodes.values(), key=lambda x:x.f)
       if current.position == goal_position:
-        logging.error("steps to find path: " + str(current.depth))
-        return trace_path(current)
+        # logging.error("steps to find path: " + str(current.depth))
+        return trace_path(current, open_nodes, closed_nodes)
       closed_nodes[current.position] = current
       for neighbor in self.environment.neighbors[current.position]:
         if (neighbor not in open_nodes and # and not open
@@ -80,20 +104,20 @@ class Search:
           new_h = self.manhattan_distance(neighbor, goal_position)
           new = Node(
             neighbor,
+            new_g + new_h,
             new_g,
             new_h,
-            new_g + new_h,
             current,
             current.depth + 1)
           open_nodes[new.position] = new
           heapq.heappush(open_nodes_heap, (new.f, new))
       # If first item has no neighbors, ant is trapped, put a noop on his move list
       if current.depth == 0 and len(open_nodes) == 0:
-        return [current.position]
+        return [current.position], None, None
 
     # Making it through the loop means we explored all points reachable but
     # did not find our goal
-    return None
+    return None, None, None
 
 class MyBot:
   # define class level variables, will be remembered between turns
@@ -218,9 +242,12 @@ class MyBot:
     # Remove currently visible territory
     for loc in self.unseen[:]:
       if ants.visible(loc):
+        logging.error("Remove: " + str(loc))
         self.unseen.remove(loc)
 
     for ant_loc in ants.my_ants():
+      logging.error("ant_loc: " + str(ant_loc))
+      logging.error("ant_loc in unseen?: " + str(ant_loc in self.unseen))
       if ant_loc in self.orders:
         continue
 
@@ -252,6 +279,7 @@ class MyBot:
           if path:
             first_move = path.pop()
           else:
+            logging.error("no path from " + str(unseen_loc) + " to " + str(unseen_loc))
             continue
           logging.error("new from: " + str(ant_loc) + " to " + str(first_move))
           if first_move not in self.next_turn_list:
