@@ -197,10 +197,10 @@ class MyBot:
 
     # TODO: Store last time a location was seen
     # so that we don't ever run out of territory to search
-    self.unseen = []
+    self.unseen = set()
     for row in range(ants.rows):
       for col in range(ants.cols):
-        self.unseen.append((row, col))
+        self.unseen.add((row, col))
 
   def do_move_direction(self, loc, direction, ants):
     new_loc = ants.destination(loc, direction)
@@ -288,10 +288,10 @@ class MyBot:
       logging.error("Unseen list reset!")
       for row in range(ants.rows):
         for col in range(ants.cols):
-          self.unseen.append((row, col))
+          self.unseen.add((row, col))
 
     # Remove currently visible territory
-    for loc in self.unseen[:]:
+    for loc in self.unseen.copy():
       if ants.visible(loc):
         # logging.error("Remove: " + str(loc))
         self.unseen.remove(loc)
@@ -314,7 +314,10 @@ class MyBot:
           else: 
             logging.error("not in unseen")
         logging.error("New BFS starting at " + str(ant_loc))
-        path, _, _ = self.search.bfs_path(ant_loc, goal_check, self.next_turn_list)
+        self.game_timer.start("bfs time")
+        path, open_nodes, closed_nodes = self.search.bfs_path(ant_loc, goal_check, self.next_turn_list)
+        logging.error(self.game_timer.stop("bfs time"))
+        logging.error("total nodes: " + str(len(open_nodes) + len(closed_nodes)))
 
         if path:
           first_move = path.pop()
