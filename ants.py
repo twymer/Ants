@@ -5,6 +5,7 @@ import random
 import time
 from collections import defaultdict
 from math import sqrt
+import logging
 
 MY_ANT = 0
 ANTS = 0
@@ -142,6 +143,30 @@ class Ants():
 
     def time_remaining(self):
         return self.turntime - int(1000 * (time.clock() - self.turn_start_time))
+
+    def enough_time(self):
+      allowable_time_percent = 30
+      if self.time_remaining() / self.turntime > allowable_time_percent / 100:
+        return True
+      else:
+        logging.error("***")
+        logging.error("***")
+        logging.error("***")
+        logging.error("OUT OF TIME!")
+        logging.error("***")
+        logging.error("***")
+        logging.error("***")
+        return False
+
+    def enough_time_to_path(self):
+      # logging.error("time remaining: " + str(self.time_remaining() / self.turntime))
+      allowable_time_percent = 10
+      if self.time_remaining() / self.turntime > allowable_time_percent / 100:
+        return True
+      else:
+        logging.error("***")
+        logging.error("OUT OF TIME TO PATH!")
+        logging.error("***")
 
     def issue_order(self, order):
         'issue an order by writing the proper ant location and direction'
