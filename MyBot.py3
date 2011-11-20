@@ -76,26 +76,19 @@ class MyBot:
       return False
 
   def find_food(self, ants):
-    ant_dist = []
     for food_loc in ants.food():
-      for ant_loc in ants.my_ants():
-        dist = ants.distance(ant_loc, food_loc)
-        ant_dist.append((dist, ant_loc, food_loc))
-    ant_dist.sort()
+      def goal_function(node):
+        return node in self.my_ants and node not in self.orders
+      self.my_ants = set(ants.my_ants())
+      path, _, _ = self.search.bfs_path(food_loc, goal_function, self.next_turn_list)
 
-    for dist, ant_loc, food_loc in ant_dist:
-      if food_loc not in self.targets and ant_loc not in self.orders:
-        path = self.search.find_path(ant_loc, food_loc, self.next_turn_list)
-        if path:
-          first_move = path.pop()
-        else:
-          continue
-        # logging.error("food from: " + str(ant_loc) + " to " + str(first_move))
-        if first_move not in self.next_turn_list:
-          self.do_move_location(ant_loc, first_move, ants)
-          self.orders[ant_loc] = food_loc
-          self.next_turn_list.add(first_move)
-          self.targets.add(food_loc)
+      if path:
+        first_move = path[1]
+        ant_loc = path[0]
+        self.do_move_location(ant_loc, first_move, ants)
+        self.orders[ant_loc] = food_loc
+        self.next_turn_list.add(first_move)
+        self.targets.add(food_loc)
 
   def find_hills(self, ants):
     for hill, owner in self.enemy_hills.copy():
