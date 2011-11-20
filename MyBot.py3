@@ -4,7 +4,6 @@ import search
 
 from random import shuffle
 
-from collections import namedtuple
 from collections import deque
 
 import heapq
@@ -161,19 +160,19 @@ class MyBot:
       if not ants.enough_time_to_path():
         return
       if ant_loc not in self.orders:
+        path = None
         if ant_loc in self.exploration_targets:
           logging.error("ant " + str(ant_loc) + " with goal " + str(self.exploration_targets[ant_loc]))
           if self.exploration_targets[ant_loc] in self.unseen:
             logging.error("Using previous path")
             path = self.search.find_path(ant_loc, self.exploration_targets[ant_loc], self.next_turn_list)
-            continue
-          else: 
-            logging.error("not in unseen")
-        logging.error("New BFS starting at " + str(ant_loc))
-        self.game_timer.start("bfs time")
-        path, open_nodes, closed_nodes = self.search.bfs_path(ant_loc, goal_check, self.next_turn_list)
-        logging.error(self.game_timer.stop("bfs time"))
-        logging.error("total nodes: " + str(len(open_nodes) + len(closed_nodes)))
+          else:
+            del self.exploration_targets[ant_loc]
+        if not path:
+          logging.error("New BFS starting at " + str(ant_loc))
+          self.game_timer.start("bfs time")
+          path, open_nodes, closed_nodes = self.search.bfs_path(ant_loc, goal_check, self.next_turn_list)
+          logging.error(self.game_timer.stop("bfs time"))
 
         if path:
           first_move = path.pop()
