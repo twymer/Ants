@@ -80,10 +80,16 @@ class MyBot:
       def goal_function(node):
         return node in self.my_ants and node not in self.orders
       self.my_ants = set(ants.my_ants())
-      path, _, _ = self.search.bfs_path(food_loc, goal_function, self.next_turn_list)
+      path, _, _ = self.search.bfs_path(food_loc,
+                                        goal_function,
+                                        self.next_turn_list)
 
       if path:
-        first_move = path[1]
+        first_move = None
+        if len(path) > 1:
+          first_move = path[1]
+        else:
+          first_move = food_loc
         ant_loc = path[0]
         self.do_move_location(ant_loc, first_move, ants)
         self.orders[ant_loc] = food_loc
@@ -91,46 +97,36 @@ class MyBot:
         self.targets.add(food_loc)
 
   def find_hills(self, ants):
-    for hill, owner in self.enemy_hills.copy():
+    for hill in self.enemy_hills.copy():
       # If we can see a hill but it's not in the enemy hills list,
       # that means we have destroyed it
-      if ants.visible(hill) and not any(hill == x[0] for x in ants.enemy_hills()):
+      if ants.visible(hill) and not hill in ants.enemy_hills_locs():
         logging.error("*** REMOVE HILL ***")
-        self.enemy_hills.remove((hill, owner))
+        self.enemy_hills.remove(hill)
 
-    self.enemy_hills = self.enemy_hills.union(ants.enemy_hills())
+    self.enemy_hills |= ants.enemy_hills_locs()
 
-    # TODO: unchecked
-    for hill_loc, hill_owner in self.enemy_hills:
-      if hill_loc not in self.hills:
-        self.hills.append(hill_loc)
-    ant_dist = []
-    for hill_loc in self.hills:
-      for ant_loc in ants.my_ants():
-        if ant_loc not in self.orders:
-          dist = ants.distance(ant_loc, hill_loc)
-          ant_dist.append((dist, ant_loc, hill_loc))
-    ant_dist.sort()
-
-    # self.orders = {}
-    # self.next_turn_list = set()
-    # self.targets = set()
-    for dist, ant_loc, hill_loc in ant_dist:
-      if ant_loc not in self.orders and hill_loc not in self.targets:
-        path = self.search.find_path(ant_loc, hill_loc, self.next_turn_list)
-        if path:
-          first_move = path.pop()
+    for hill in self.enemy_hills:
+      def goal_function(node):
+        return node in self.my_ants and node not in self.orders
+      self.my_ants = set(ants.my_ants())
+      path, _, _ = self.search.bfs_path(hill,
+                                        goal_function,
+                                        self.next_turn_list)
+      if path:
+        first_move = None
+        if len(path) > 1:
+          first_move = path[1]
         else:
-          continue
-        logging.error("hill from: " + str(ant_loc) + " to " + str(first_move))
-        if first_move not in self.next_turn_list:
-          self.do_move_location(ant_loc, first_move, ants)
-          self.orders[ant_loc] = hill_loc
-          self.next_turn_list.add(first_move)
-          self.targets.add(hill_loc)
+          first_move = hill
+        ant_loc = path[0]
+        self.do_move_location(ant_loc, first_move, ants)
+        self.orders[ant_loc] = hill
+        self.next_turn_list.add(first_move)
+        self.targets.add(hill)
+
 
   def find_new(self, ants):
-    logging.error("Unseen size: " + str(len(self.unseen)))
     # Reset list now that it's empty..
     if len(self.unseen) == 0:
       logging.error("Unseen list reset!")
@@ -144,29 +140,17 @@ class MyBot:
         # logging.error("Remove: " + str(loc))
         self.unseen.remove(loc)
 
-    def goal_check(test_loc):
+    def goal_function(test_loc):
       return test_loc in self.unseen and test_loc not in self.targets
 
-    new_exploration_targets = {}
-    logging.error("explore: " + str(self.exploration_targets.keys()))
     for ant_loc in ants.my_ants():
-      if not ants.enough_time_to_path():
+      if not self.enough_time_to_path():
         return
-      if ant_loc not in self.orders:
-        path = None
-        if ant_loc in self.exploration_targets:
-          logging.error("ant " + str(ant_loc) + " with goal " + str(self.exploration_targets[ant_loc]))
-          if self.exploration_targets[ant_loc] in self.unseen:
-            logging.error("Using previous path")
-            path = self.search.find_path(ant_loc, self.exploration_targets[ant_loc], self.next_turn_list)
-          else:
-            del self.exploration_targets[ant_loc]
-        if not path:
-          logging.error("New BFS starting at " + str(ant_loc))
-          self.game_timer.start("bfs time")
-          path, open_nodes, closed_nodes = self.search.bfs_path(ant_loc, goal_check, self.next_turn_list)
-          logging.error(self.game_timer.stop("bfs time"))
 
+      if ant_loc not in self.orders:
+        path, _, _ = self.search.bfs_path(ant_loc,
+                                          goal_function,
+                                          self.next_turn_list)
         if path:
           first_move = path.pop()
         else:
@@ -177,9 +161,6 @@ class MyBot:
           self.orders[ant_loc] = path[0]
           self.next_turn_list.add(first_move)
           self.targets.add(path[0])
-          new_exploration_targets[first_move] = path[0]
-
-    self.exploration_targets = new_exploration_targets
 
   def do_turn(self, ants):
     logging.error("*****")
@@ -222,7 +203,6 @@ class MyBot:
     logging.error("*****")
     logging.error("End turn")
     logging.error("Took " + str(ants.turntime - ants.time_remaining()) + " of total " + str(ants.turntime))
-    logging.error("inner unseen time: " + str(self.inner_unseen_time))
     self.initialize_timing()
     logging.error("*****")
 

@@ -188,8 +188,8 @@ class Ants():
                     if owner != MY_ANT]
 
     def enemy_hills_locs(self):
-        return [loc for loc, owner in self.hill_list.items()
-                    if owner != MY_ANT]
+        return set([loc for loc, owner in self.hill_list.items()
+                    if owner != MY_ANT])
 
     def my_ants(self):
         'return a list of all my ants'
