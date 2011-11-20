@@ -2,8 +2,6 @@
 from ants import *
 import search
 
-from random import shuffle
-
 from collections import deque
 
 import heapq
@@ -76,14 +74,16 @@ class MyBot:
       return False
 
   def find_food(self, ants):
+    def goal_function(node):
+      return node in self.my_ants and node not in self.orders
     for food_loc in ants.food():
-      def goal_function(node):
-        return node in self.my_ants and node not in self.orders
+      if not ants.enough_time_to_path():
+        return
+
       self.my_ants = set(ants.my_ants())
       path, _, _ = self.search.bfs_path(food_loc,
                                         goal_function,
                                         self.next_turn_list)
-
       if path:
         first_move = None
         if len(path) > 1:
@@ -106,9 +106,12 @@ class MyBot:
 
     self.enemy_hills |= ants.enemy_hills_locs()
 
+    def goal_function(node):
+      return node in self.my_ants and node not in self.orders
     for hill in self.enemy_hills:
-      def goal_function(node):
-        return node in self.my_ants and node not in self.orders
+      if not ants.enough_time_to_path():
+        return
+
       self.my_ants = set(ants.my_ants())
       path, _, _ = self.search.bfs_path(hill,
                                         goal_function,
@@ -124,7 +127,6 @@ class MyBot:
         self.orders[ant_loc] = hill
         self.next_turn_list.add(first_move)
         self.targets.add(hill)
-
 
   def find_new(self, ants):
     # Reset list now that it's empty..
@@ -144,7 +146,7 @@ class MyBot:
       return test_loc in self.unseen and test_loc not in self.targets
 
     for ant_loc in ants.my_ants():
-      if not self.enough_time_to_path():
+      if not ants.enough_time_to_path():
         return
 
       if ant_loc not in self.orders:
