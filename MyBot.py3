@@ -2,9 +2,9 @@
 from ants import *
 import search
 
-from collections import deque
-
 import heapq
+from collections import deque
+from math import sqrt
 
 import logging
 from time import time
@@ -68,7 +68,6 @@ class MyBot:
     directions = ants.direction(loc, dest)
     for direction in directions:
       if self.do_move_direction(loc, direction, ants):
-        # self.targets[dest] = loc
         return True
     else:
       return False
@@ -164,6 +163,43 @@ class MyBot:
           self.next_turn_list.add(first_move)
           self.targets.add(path[0])
 
+  def do_combat(self, ants):
+    # TODO: Notes:
+    # Does not account for ants on both sides of attack radius
+    attack_radius2 = ants.attackradius2
+
+    my_ants = ants.my_ants()
+    enemy_ants = ants.enemy_ants_locs()
+    for my_ant in my_ants:
+      if my_ant in self.orders:
+        continue
+      opponents = []
+      for enemy_ant in enemy_ants:
+        if (ants.distance_formula(my_ant, enemy_ant) <
+            sqrt(attack_radius2) + 1):
+          opponents.append(enemy_ant)
+      friends = [my_ant]
+      if opponents:
+        for friendly_ant in my_ants:
+          if (ants.distance_formula(friendly_ant, enemy_ant) <
+              sqrt(attack_radius2) + 1):
+            friends.append(friendly_ant)
+
+        logging.error(str(len(friends)) + " vs " + str(len(opponents)))
+        if len(friends) > len(opponents):
+          for friend in friends:
+            # TODO: path find instead
+            # TODO: move to center point?
+            self.do_move_location(friend, opponents[0], ants)
+            # TODO:
+            # self.next_turn_list.add(first_move)
+        else:
+          for friend in friends:
+            direction = ants.direction(friend, opponents[0])[0]
+            directions = { 'n':'s', 'e':'w', 'w':'e', 's':'n' }
+            self.do_move_direction(friend, directions[direction], ants)
+
+
   def do_turn(self, ants):
     logging.error("*****")
     logging.error("Start turn")
@@ -182,6 +218,10 @@ class MyBot:
     #for hill_loc in ants.my_hills():
     #  self.orders[hill_loc] = None
     #logging.error("move list start turn" + str(self.move_list))
+
+    self.game_timer.start("combat time")
+    self.do_combat(ants)
+    tt0 = self.game_timer.stop("combat time")
 
     self.game_timer.start("food time")
     if ants.enough_time():

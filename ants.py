@@ -202,6 +202,11 @@ class Ants():
                     for (row, col), owner in self.ant_list.items()
                     if owner != MY_ANT]
 
+    def enemy_ants_locs(self):
+        # TODO Set?
+        return [(row, col) for (row, col), owner in self.ant_list.items()
+                    if owner != MY_ANT]
+
     def food(self):
         'return a list of all food locations'
         return self.food_list[:]
@@ -230,6 +235,13 @@ class Ants():
         d_col = min(abs(col1 - col2), self.cols - abs(col1 - col2))
         d_row = min(abs(row1 - row2), self.rows - abs(row1 - row2))
         return d_row + d_col
+
+    def distance_formula(self, loc1, loc2):
+        row1, col1 = loc1
+        row2, col2 = loc2
+        d_col = min(abs(col1 - col2), self.cols - abs(col1 - col2))
+        d_row = min(abs(row1 - row2), self.rows - abs(row1 - row2))
+        return sqrt(d_col * d_col + d_row * d_row)
 
     def direction(self, loc1, loc2):
         'determine the 1 or 2 fastest (closest) directions to reach a location'
